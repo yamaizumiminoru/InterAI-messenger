@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messenger Mode</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar: Case List -->
+        <aside class="sidebar">
+            <div class="sidebar-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Cases</h2>
+                <button id="btn-help" class="btn secondary" style="padding: 4px 10px; font-size: 0.8rem;">?</button>
+            </div>
+            <div id="case-list" class="case-list">
+                <!-- Cases will be injected here -->
+            </div>
+        </aside>
+
+        <!-- Main Content: Case Details -->
+        <main class="main-content">
+            <div id="empty-state" class="empty-state">
+                <p>案件を選択してください or <br>Ctrl+Shift+1 で新規作成</p>
+            </div>
+
+            <div id="case-detail" class="case-detail hidden">
+                <header class="detail-header">
+                    <h1 id="case-title">Case Title</h1>
+                    <div class="actions">
+                        <button id="btn-copy-handoff" class="btn primary">Handoff をコピー</button>
+                        <button id="btn-open-folder" class="btn secondary">フォルダを開く</button>
+                        <button id="btn-delete-case" class="btn secondary"
+                            style="color: #ff6b6b; border-color: #ff6b6b;">削除</button>
+                    </div>
+                </header>
+
+                <div class="content-grid">
+                    <!-- Text/Handoff Column -->
+                    <div class="col-text">
+                        <section class="panel">
+                            <h3>Handoff</h3>
+                            <div class="editor-container">
+                                <textarea id="handoff-content" readonly></textarea>
+                            </div>
+                        </section>
+                        <section class="panel">
+                            <h3>Clipboard Log</h3>
+                            <pre id="clip-content"></pre>
+                        </section>
+                    </div>
+
+                    <!-- Media Column -->
+                    <div class="col-media">
+                        <section class="panel">
+                            <h3>Target Screenshot</h3>
+                            <div class="image-container">
+                                <img id="screenshot-img" src="" alt="Screenshot">
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>使い方</h2>
+                <button id="btn-close-help" class="btn secondary">×</button>
+            </div>
+            <div class="modal-body">
+                <h3>ホットキー</h3>
+                <ul>
+                    <li><strong>Ctrl + Shift + 1</strong> : 撮影して案件作成</li>
+                    <li><strong>Ctrl + Shift + 2</strong> : クリップボードを保存</li>
+                    <li><strong>Ctrl + Shift + 3</strong> : Handoff 生成 ＆ コピー</li>
+                </ul>
+                <h3>基本フロー</h3>
+                <ol>
+                    <li>詰まったら <code>Ctrl+Shift+1</code> で撮影</li>
+                    <li>エラーログ等をコピーして <code>Ctrl+Shift+2</code> で追記（任意）</li>
+                    <li><code>Ctrl+Shift+3</code> でAIへの指示書を生成</li>
+                    <li>Gemini/ChatGPT に貼り付け</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+
+</html>

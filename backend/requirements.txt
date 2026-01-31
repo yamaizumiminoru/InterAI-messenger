@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+keyboard
+mss
+pyperclip
+jinja2
+pygetwindow
+ujson
+python-multipart
+pydantic
