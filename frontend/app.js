@@ -16,7 +16,10 @@ const els = {
     // Help
     btnHelp: document.getElementById('btn-help'),
     btnCloseHelp: document.getElementById('btn-close-help'),
-    helpModal: document.getElementById('help-modal')
+    helpModal: document.getElementById('help-modal'),
+
+    // Manual Trigger
+    btnManualCapture: document.getElementById('btn-manual-capture')
 };
 
 // Help Modal Logic
@@ -25,20 +28,66 @@ els.btnCloseHelp.onclick = () => els.helpModal.classList.add('hidden');
 // Close on click outside
 els.helpModal.onclick = (e) => {
     if (e.target === els.helpModal) els.helpModal.classList.add('hidden');
+    if (e.target === els.helpModal) els.helpModal.classList.add('hidden');
+}
+
+// Manual Capture Logic
+if (els.btnManualCapture) {
+    els.btnManualCapture.onclick = async () => {
+        try {
+            const originalText = "📷 Capture";
+            // Countdown
+            for (let i = 3; i > 0; i--) {
+                els.btnManualCapture.textContent = `Wait ${i}s...`;
+                await new Promise(r => setTimeout(r, 1000));
+            }
+
+            els.btnManualCapture.textContent = "Capturing...";
+            await fetch(`${API_BASE}/debug/trigger`);
+
+            // Wait a sec for FS
+            setTimeout(() => {
+                fetchCases();
+                els.btnManualCapture.textContent = originalText;
+            }, 1000);
+        } catch (e) {
+            console.error("Manual capture failed", e);
+            alert("Capture failed");
+            els.btnManualCapture.textContent = "Error";
+        }
+    };
 }
 
 let currentCase = null;
 
 // Event Listeners
 els.btnCopyHandoff.onclick = async () => {
-    if (!els.handoffContent.value) return;
     try {
-        await navigator.clipboard.writeText(els.handoffContent.value);
         const originalText = els.btnCopyHandoff.textContent;
-        els.btnCopyHandoff.textContent = "Copied!";
+        els.btnCopyHandoff.textContent = "Generating...";
+
+        // 1. Force Generate (and server-side copy)
+        await fetch(`${API_BASE}/debug/handoff`);
+
+        // 2. Refresh UI to get new content
+        if (currentCase) {
+            const res = await fetch(`${API_BASE}/case/${currentCase.name}/assets`);
+            const assets = await res.json();
+            els.handoffContent.value = assets.handoff_content || '';
+        }
+
+        // 3. Client-side copy (redundant but safe)
+        if (els.handoffContent.value) {
+            await navigator.clipboard.writeText(els.handoffContent.value);
+            els.btnCopyHandoff.textContent = "Copied!";
+        } else {
+            els.btnCopyHandoff.textContent = "Empty!";
+        }
+
         setTimeout(() => els.btnCopyHandoff.textContent = originalText, 2000);
     } catch (err) {
         console.error('Failed to copy!', err);
+        els.btnCopyHandoff.textContent = "Error";
     }
 };
 

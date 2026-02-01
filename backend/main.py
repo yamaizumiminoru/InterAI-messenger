@@ -7,7 +7,7 @@ from services.hotkey_mgr import hotkey_mgr
 from services.case_mgr import case_manager
 import os
 
-app = FastAPI(title="Messenger Mode MVP")
+app = FastAPI(title="Messenger Mode v0.2")
 
 # CORS for local dev
 app.add_middleware(
@@ -105,11 +105,27 @@ def delete_case(case_name: str):
 def health_check():
     return {"status": "ok"}
 
+@app.get("/api/debug/trigger")
+def debug_trigger():
+    print("DEBUG: Triggering screenshot via HTTP")
+    hotkey_mgr.on_screenshot()
+    hotkey_mgr.on_clip_save()
+    return {"status": "triggered"}
+
+@app.get("/api/debug/handoff")
+def debug_handoff():
+    print("DEBUG: Triggering handoff via HTTP")
+    # This generates content AND copies to clipboard (server-side)
+    hotkey_mgr.on_handoff() 
+    return {"status": "handoff_generated"}
+
 # Mount Frontend (assuming dist or similar, for now just static)
 # We will create a simple index.html soon.
 frontend_path = os.path.abspath("../frontend")
 if os.path.exists(frontend_path):
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="static")
+
+
 
 @app.on_event("startup")
 def startup_event():

@@ -12,10 +12,19 @@ class HotkeyManager:
     def on_screenshot(self):
         print("Hotkey: Screenshot triggered")
         # 1. Create NEW Case for every screenshot action (MVP behavior)
-        case_manager.create_case() 
+        case = case_manager.create_case() 
         # 2. Capture
         path, context_app = capture_service.capture_screenshot()
         print(f"Captured: {path} from {context_app}")
+        
+        # 3. Persist Metadata for Handoff
+        try:
+             meta_path = os.path.join(case.path, "meta.json")
+             import json
+             with open(meta_path, "w", encoding="utf-8") as f:
+                 json.dump({"active_app": context_app}, f)
+        except Exception as e:
+            print(f"Failed to save metadata: {e}")
 
     def on_clip_save(self):
         print("Hotkey: Clip Save triggered")
@@ -25,18 +34,29 @@ class HotkeyManager:
 
     def on_handoff(self):
         print("Hotkey: Handoff triggered")
-        # Need context. For MVP, we use the last captured screenshot info if available, 
-        # or re-capture active window title? 
-        # Let's get active window title again for strict accuracy.
-        import pygetwindow as gw
-        active_app = "Unknown"
-        try:
-             w = gw.getActiveWindow()
-             if w: active_app = w.title
-        except: pass
-
+        
         # Get latest screenshot from case
         case = case_manager.get_current_case()
+        
+        # Determine Active App Context
+        # Priority 1: Saved Metadata (from screenshot time)
+        active_app = "Unknown"
+        meta_path = os.path.join(case.path, "meta.json")
+        if os.path.exists(meta_path):
+            try:
+                import json
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    active_app = data.get("active_app", "Unknown")
+            except: pass
+        else:
+            # Fallback: Current Active Window (Legacy behavior)
+            import pygetwindow as gw
+            try:
+                 w = gw.getActiveWindow()
+                 if w: active_app = w.title
+            except: pass
+
         # Find latest png in input
         files = [f for f in os.listdir(case.input_dir) if f.endswith(".png")]
         files.sort(reverse=True) # timestamp desc

@@ -1,15 +1,8 @@
-# Python
 __pycache__/
-*.py[cod]
-*$py.class
-venv/
-.env
-
-# OS
-.DS_Store
-Thumbs.db
-
-# App Data
-MessengerCases/
-backend/log/
+*.pyc
+cases/
 log/
+.env
+.DS_Store
+backend.log
+test_templates.py
