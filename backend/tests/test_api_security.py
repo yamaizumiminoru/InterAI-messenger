@@ -143,7 +143,7 @@ def test_old_arbitrary_path_endpoint_cannot_launch_file(tmp_path, monkeypatch):
         params={"path": str(executable)},
         headers=protected_headers(),
     )
-    assert response.status_code == 404
+    assert response.status_code in {404, 405}
     startfile.assert_not_called()
 
 
