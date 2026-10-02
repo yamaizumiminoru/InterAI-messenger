@@ -1,4 +1,22 @@
 const API_BASE = "http://127.0.0.1:8000/api";
+let csrfToken = null;
+let screenshotObjectUrl = null;
+
+async function ensureSession() {
+    if (csrfToken) return csrfToken;
+    const res = await fetch(`${API_BASE}/session`);
+    if (!res.ok) throw new Error(`Session initialization failed: ${res.status}`);
+    const data = await res.json();
+    csrfToken = data.csrf_token;
+    return csrfToken;
+}
+
+async function apiFetch(path, options = {}) {
+    const token = await ensureSession();
+    const headers = new Headers(options.headers || {});
+    headers.set("X-InterAI-CSRF", token);
+    return fetch(`${API_BASE}${path}`, { ...options, headers });
+}
 
 const els = {
     caseList: document.getElementById('case-list'),
@@ -43,7 +61,7 @@ if (els.btnManualCapture) {
             }
 
             els.btnManualCapture.textContent = "Capturing...";
-            await fetch(`${API_BASE}/debug/trigger`);
+            await apiFetch("/debug/trigger", { method: "POST" });
 
             // Wait a sec for FS
             setTimeout(() => {
@@ -67,11 +85,11 @@ els.btnCopyHandoff.onclick = async () => {
         els.btnCopyHandoff.textContent = "Generating...";
 
         // 1. Force Generate (and server-side copy)
-        await fetch(`${API_BASE}/debug/handoff`);
+        await apiFetch("/debug/handoff", { method: "POST" });
 
         // 2. Refresh UI to get new content
         if (currentCase) {
-            const res = await fetch(`${API_BASE}/case/${currentCase.name}/assets`);
+            const res = await apiFetch(`/case/${encodeURIComponent(currentCase.name)}/assets`);
             const assets = await res.json();
             els.handoffContent.value = assets.handoff_content || '';
         }
@@ -95,9 +113,8 @@ els.btnOpenFolder.onclick = () => {
     // There is no standard web API to open a local folder from browser for security.
     // However, since this is a local app, we can make an API call to the backend to open it.
     if (currentCase) {
-        // User requested to open 'input' folder specifically
-        const targetPath = currentCase.path + "\\input";
-        fetch(`${API_BASE}/open_folder?path=${encodeURIComponent(targetPath)}`);
+        apiFetch(`/cases/${encodeURIComponent(currentCase.name)}/open-folder?subdir=input`, { method: "POST" })
+            .catch(err => console.error("Open folder failed", err));
     }
 };
 
@@ -106,7 +123,7 @@ els.btnDeleteCase.onclick = async () => {
     if (!confirm(`案件 "${currentCase.name}" を削除しますか？\nこの操作は元に戻せません。`)) return;
 
     try {
-        const res = await fetch(`${API_BASE}/cases/${currentCase.name}`, { method: 'DELETE' });
+        const res = await apiFetch(`/cases/${encodeURIComponent(currentCase.name)}`, { method: 'DELETE' });
         if (res.ok) {
             currentCase = null;
             els.caseDetail.classList.add('hidden');
@@ -123,7 +140,7 @@ els.btnDeleteCase.onclick = async () => {
 
 async function fetchCases() {
     try {
-        const res = await fetch(`${API_BASE}/cases`);
+        const res = await apiFetch("/cases");
         const cases = await res.json();
         renderCaseList(cases);
     } catch (e) {
@@ -161,10 +178,24 @@ async function selectCase(c) {
 
     // Fetch Assets
     try {
-        const res = await fetch(`${API_BASE}/case/${c.name}/assets`);
+        const res = await apiFetch(`/case/${encodeURIComponent(c.name)}/assets`);
         const assets = await res.json();
 
-        els.screenshotImg.src = assets.screenshot_url || '';
+        if (screenshotObjectUrl) {
+            URL.revokeObjectURL(screenshotObjectUrl);
+            screenshotObjectUrl = null;
+        }
+        if (assets.has_screenshot) {
+            const screenshotRes = await apiFetch(`/case/${encodeURIComponent(c.name)}/screenshot`);
+            if (screenshotRes.ok) {
+                screenshotObjectUrl = URL.createObjectURL(await screenshotRes.blob());
+                els.screenshotImg.src = screenshotObjectUrl;
+            } else {
+                els.screenshotImg.src = '';
+            }
+        } else {
+            els.screenshotImg.src = '';
+        }
         els.handoffContent.value = assets.handoff_content || '';
         els.clipContent.textContent = assets.clip_content || '(No clipboard content)';
 
