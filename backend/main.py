@@ -56,14 +56,28 @@ async def protect_local_api(request: Request, call_next):
     if origin is not None and origin not in ALLOWED_ORIGINS:
         return _error(403, "Origin is not allowed")
 
+    # Browsers commonly omit Origin on same-origin GETs. Accept that case only
+    # when browser fetch metadata and Referer independently confirm same-origin.
+    referer = request.headers.get("referer", "")
+    sec_fetch_site = (request.headers.get("sec-fetch-site") or "").lower()
+    browser_same_origin = (
+        origin is None
+        and sec_fetch_site == "same-origin"
+        and any(referer.startswith(allowed + "/") for allowed in ALLOWED_ORIGINS)
+    )
+    trusted_browser_origin = origin in ALLOWED_ORIGINS or browser_same_origin
+
     path = request.url.path
     if path.startswith("/api/") and path not in {"/api/health", "/api/session"}:
-        if origin not in ALLOWED_ORIGINS:
-            return _error(403, "Origin is required for API access")
+        if not trusted_browser_origin:
+            return _error(403, "Trusted browser origin is required for API access")
 
-        supplied = request.headers.get("x-interai-csrf", "")
-        if not supplied or not secrets.compare_digest(supplied, CSRF_TOKEN):
-            return _error(403, "Missing or invalid CSRF token")
+        # CORS preflight verifies the requested Origin/headers but cannot carry
+        # the actual per-session token. The real request is checked below.
+        if request.method != "OPTIONS":
+            supplied = request.headers.get("x-interai-csrf", "")
+            if not supplied or not secrets.compare_digest(supplied, CSRF_TOKEN):
+                return _error(403, "Missing or invalid CSRF token")
 
     return await call_next(request)
 
