@@ -110,6 +110,33 @@ class LocalApiSecurityTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         startfile.assert_not_called()
 
+    def test_same_origin_browser_get_without_origin_is_allowed(self):
+        response = self.client.get(
+            "/api/cases",
+            headers={
+                "Referer": "http://127.0.0.1:8000/",
+                "Sec-Fetch-Site": "same-origin",
+                "X-InterAI-CSRF": main.CSRF_TOKEN,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_allowed_cors_preflight_does_not_require_actual_csrf_value(self):
+        response = self.client.options(
+            "/api/debug/trigger",
+            headers={
+                "Origin": "http://localhost:8000",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "x-interai-csrf",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.headers.get("access-control-allow-origin"),
+            "http://localhost:8000",
+        )
+
+
 
 if __name__ == "__main__":
     unittest.main()
